@@ -43,6 +43,8 @@ beatles <- get_artist_audio_features('the beatles')
 
 radiohead <- get_artist_audio_features('radiohead')
 
+sm <- get_artist_audio_features('soccer mommy')
+
 beatle_tracks = get_album_tracks('7C221PnWhYGv8Tc0xSbfdc')
 
 install.packages("tidyverse")
