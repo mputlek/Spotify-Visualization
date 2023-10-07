@@ -1,71 +1,114 @@
-
-
-# TODAY:
-#   3 levels of interactivity
-#     - 1) Changing aesthetics
-#     - 2) Changing columns selected
-#     - 3) Filtering rows (maybe, this one is tough, we might save for Day 11)
-#
-#   Basic formatting
-#     - sidebarlayout() today, I'll provide templates for some other stuff
-
-
-
-#library(stringr)
 #str_subset(ls('package:shiny'), 'render')
 #str_subset(ls('package:shiny'), 'Output')
 #str_subset(ls('package:shiny'), 'Input')
 
 
+####### LIBRARIES ###########
+
+library(spotifyr)
+library(stringr)
 library(shiny)
 library(ggplot2)
 library(dplyr)
 library(scales)
 library(lubridate)
-library(DT)
-
+library(tidyr)
 library(purrr)
-library(knitr)
 
-library(spotifyr)
 
-# Authentication
+ls("package:spotifyr")
+
+###############################
+
+
+
+####### AUTHENTICATION ###########
+
 client_id = Sys.setenv(SPOTIFY_CLIENT_ID = 'fbc194065b41426bade65bb1e1d8c819')
 client_secret = Sys.setenv(SPOTIFY_CLIENT_SECRET = '326eb15d679b4da29bbfe0c1e1feae50')
 
 access_token = get_spotify_access_token()
 
-get_spotify_authorization_code()
 
-#Get Artist Data
-
-beatles <- get_artist_audio_features('the beatles')
-
-radiohead <- get_artist_audio_features('radiohead')
-
-sm <- get_artist_audio_features('soccer mommy')
-
-beatle_tracks = get_album_tracks('7C221PnWhYGv8Tc0xSbfdc')
-
-install.packages("tidyverse")
-library(tidyverse)
-library(knitr)
-
-beatles %>% 
-  count(key_mode, sort = TRUE) %>% 
-  head(5) %>% 
-  kable()
-
-library(ggjoy)
-
-ggplot(joy, aes(x = valence, y = album_name)) + 
-  geom_joy() + 
-  theme_joy() +
-  ggtitle("Joyplot of Joy Division's joy distributions", subtitle = "Based on valence pulled from Spotify's Web API with spotifyr")
+###############################
 
 
-# plot 2 - scatterplot of profit by sales, color by region (level 2: let user change x, y, color)
-# maybe let them update point size as well?
+
+####### GET PLAYLIST DATA ###########
+
+playlist_username <- 'spotify'
+
+all_out_10s <- get_playlist_audio_features(playlist_username, '37i9dQZF1DX5Ejj0EkURtP')
+
+all_out_00s <- get_playlist_audio_features(playlist_username, '37i9dQZF1DX4o1oenSJRJd')
+
+all_out_90s <- get_playlist_audio_features(playlist_username, '37i9dQZF1DXbTxeAdrVG2l')
+
+all_out_80s <- get_playlist_audio_features(playlist_username, '37i9dQZF1DX4UtSsGT1Sbe')
+
+combined_data <- bind_rows(
+  data1 = all_out_80s,
+  data2 = all_out_90s,
+  data3 = all_out_00s,
+  data4 = all_out_10s,
+  .id = "dataset_name"
+)
+
+
+
+all_out_00s$track.album.artists[[1]][[3]]
+
+all_out_00s$extracted_data <- sapply(all_out_00s$track.album.artists, function(x) {
+  if(length(x) >= 3) x[[3]] else NA
+})
+
+all_out_00s$extracted_data
+
+
+####################################
+
+
+####### DATA CLEANING ###########
+
+####################################
+
+
+############ DATA VIZ - DENSITY x DANCEABILITY ########################
+
+
+all_out_00s %>%
+  group_by(extracted_data) %>%
+  summarise(song_count = n()) %>%
+  arrange(desc(song_count)) %>%
+  ggplot(aes(x = reorder(extracted_data, -song_count), y = song_count)) +  # Reorder artists by song count
+  geom_col() +
+  labs(title = "Number of Songs by Artist in All Out 00s Playlist",
+       x = "Artist",
+       y = "Number of Songs") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
+
+
+
+############ DATA VIZ - DENSITY x DANCEABILITY ########################
+
+  playlist_audio_features %>% ggplot(aes(x=danceability, fill=playlist_name,
+                              text = paste(playlist_name)))+
+    geom_density(alpha=0.7, color=NA)+
+    scale_fill_manual(values=c('skyblue'))+
+    labs(x="Danceability", y="Density") +
+    guides(fill=guide_legend(title="Playlist"))+
+    theme_minimal()+
+    ggtitle("Distribution of Danceability Data") + 
+    geom_rug(alpha=0.5, sides="b") +
+    geom_vline(data= . %>% group_by(playlist_name) %>% 
+                   summarize(mean_danceability=mean(danceability)),
+                 aes(xintercept=mean_danceability), linetype="dashed", color="blue", alpha=0.7)
+  
+
+####################################
+
+
 
 
 
@@ -74,69 +117,55 @@ ggplot(joy, aes(x = valence, y = album_name)) +
 #########
 ui = fluidPage(
   
+  titlePanel("Density Visualization with Shiny"),
+  
   sidebarLayout(
     
     sidebarPanel(
-      selectInput('bar_fill', 'Bar Color', choices = colors(), selected = ''),
-      selectInput('bar_color', 'Border Color', choices = colors(), selected = 'black'),
-      selectInput('xvar', 'X-Axis?', choices = c('Sales', 'Profit', 'Discount', 'Quantity')),
-      selectInput('yvar', 'Y-Axis?', choices = c('Sales', 'Profit', 'Discount', 'Quantity'), selected = 'Profit'),
-      selectInput('colorvar', 'Color By?', choices = c('Segment', 'Region', 'Category')),
-      
-      radioButtons('sales_year', 'Sales Year', choices = c('All',2016, 2017, 2018, 2019)),
+      selectInput("dataset", 
+                  "Choose a dataset:", 
+                  choices = c("all_out_80s", "all_out_90s", "all_out_00s", "all_out_10s"))
     ),
     
     mainPanel(
-      plotOutput('sales_bar'),
-      plotOutput('scatter'),
-      dataTableOutput('source_data'),
+      plotOutput("densityPlot")
     )
   ) #closes sidebar layout
   
 )
 
-# 3) add inputs for the user to interact with (using *Input)
-# 2) display whatever we build (using *Output)
 
 #################
 # SERVER (build all the things we want to see on the app)
 ##############
 
-server = function(input, output){
-  # 1) build something to display (using render*)
-  # Sales Bar Plot
-  output$sales_bar = renderPlot({
+server <- function(input, output) {
+  
+  output$densityPlot <- renderPlot({
+    # Depending on input, select dataset
     
-    rows_i_want = TRUE
+    data_selected <- switch(input$dataset,
+                            "all_out_80s" = all_out_80s,
+                            "all_out_90s" = all_out_90s,
+                            "all_out_00s" = all_out_00s,
+                            "all_out_10s" = all_out_10s)
     
-    if(input$sales_year != 'All'){rows_i_want = rows_i_want & d$Year == input$sales_year}
-    
-    d[rows_i_want ,] %>%
-      group_by(State) %>%
-      summarise(Sales = sum(Sales)) %>%
-      top_n(10) %>%
-      ggplot(aes(y=reorder(State, Sales), x=Sales)) +
-      geom_col(fill = input$bar_fill, color = input$bar_color) +
-      labs(y='') + 
-      scale_x_continuous('Total Sales', labels=dollar) + 
-      theme(
-        axis.text = element_text(face='bold', size=18),
-        text = element_text(face='bold', size=18)
-      )
+    # Create plot
+    ggplot(data_selected ,aes(x=danceability, fill=playlist_name,
+                                           text = paste(playlist_name)))+
+      geom_density(alpha=0.7, color=NA)+
+      labs(x="Danceability", y="Density") +
+      guides(fill=guide_legend(title="Playlist"))+
+      theme_minimal()+
+      ggtitle("Distribution of Danceability Data") + 
+      geom_rug(alpha=0.5, sides="b") +
+      geom_vline(data= . %>% group_by(playlist_name) %>% 
+                   summarize(mean_danceability=mean(danceability)),
+                 aes(xintercept=mean_danceability), linetype="dashed", color="blue", alpha=0.7)
   })
   
-  ?geom_col
-  
-  # User defined scatterplot
-  output$scatter = renderPlot(
-    ggplot(d, aes_string(x=input$xvar, y=input$yvar, color=input$colorvar)) +
-      geom_point()
-  )
-  
-  # output source data
-  output$source_data = DT::renderDataTable(d)
-  
 }
+
 
 
 
