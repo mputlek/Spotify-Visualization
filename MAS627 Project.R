@@ -186,7 +186,7 @@ combined_data = combined_data %>%
 #########
 ui = fluidPage(
   
-  titlePanel("Decades of Music Visualization with Shiny"),
+  titlePanel("Spotify Music Data Visualization with Shiny"),
   
   tabsetPanel(
     
@@ -196,8 +196,8 @@ ui = fluidPage(
                                      "Choose a Spotify Playlist:", 
                                      choices = c("All Out 80s" = "all_out_80s", 
                                                  "All Out 90s" = "all_out_90s", 
-                                                 "All Out 00s" = "all_out_00s", 
-                                                 "All Out 10s" = "all_out_10s"),
+                                                 "All Out 2000s" = "all_out_00s", 
+                                                 "All Out 2010s" = "all_out_10s"),
                                      selected = "all_out_80s")
                )
              ),
@@ -208,12 +208,13 @@ ui = fluidPage(
              fluidRow(
                column(4, selectInput("dataset1", 
                                      "Choose a Spotify Playlist:", 
-                                     choices = c("All Out 80s" = "all_out_80s", 
+                                     choices = c("All Out 80s to 2010s" = "combined_data",
+                                                 "All Out 80s" = "all_out_80s", 
                                                  "All Out 90s" = "all_out_90s", 
-                                                 "All Out 00s" = "all_out_00s", 
-                                                 "All Out 10s" = "all_out_10s",
-                                                 "1980s to 2010s" = "combined_data"),
-                                     selected = "all_out_80s")
+                                                 "All Out 2000s" = "all_out_00s", 
+                                                 "All Out 2010s" = "all_out_10s"
+                                                 ),
+                                     selected = "combined_data")
                ),
                column(4, selectInput('xvar', 
                                      'X-Axis Variable', 
@@ -236,9 +237,8 @@ ui = fluidPage(
                                      "Choose a Spotify Playlist:", 
                                      choices = c("All Out 80s" = "all_out_80s", 
                                                  "All Out 90s" = "all_out_90s", 
-                                                 "All Out 00s" = "all_out_00s", 
-                                                 "All Out 10s" = "all_out_10s",
-                                                 "1980s to 2010s" = "combined_data"),
+                                                 "All Out 2000s" = "all_out_00s", 
+                                                 "All Out 2010s" = "all_out_10s"),
                                      selected = "all_out_80s")
              ),
              dataTableOutput("source_data")
@@ -278,9 +278,14 @@ server <- function(input, output) {
            y = "Song") +
       theme_minimal() +
       theme(
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 16),
-        axis.text.y = element_text(size = 16)
-      ) 
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 15),
+        axis.text.y = element_text(size = 15),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15),
+        plot.title = element_text(size = 20),
+        legend.text = element_text(size = 12)
+      ) +
+      scale_x_continuous(breaks = seq(80,100,1))
     
   })
   
@@ -295,17 +300,21 @@ server <- function(input, output) {
                             "combined_data" = combined_data)
     
 
-    ggplot(data_selected ,aes(x=!!sym(input$xvar), fill=playlist_name,
-                                           text = paste(playlist_name)))+
+    ggplot(data_selected, 
+           aes(x=!!sym(input$xvar), fill=playlist_name,text = paste(playlist_name)))+
       geom_density(alpha=0.7, color=NA)+
       labs(x=input$xvar, y="Density") +
       guides(fill=guide_legend(title="Playlist"))+
       theme_minimal()+
       theme(
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 16),
-        axis.text.y = element_text(size = 16)
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 15),
+        axis.text.y = element_text(size = 15),
+        axis.title.x = element_text(size = 15),
+        axis.title.y = element_text(size = 15),
+        plot.title = element_text(size = 20),
+        legend.text = element_text(size = 12)
       ) +
-      ggtitle("Distribution of Danceability Data")
+      ggtitle("Distribution of Audio Feature Data")
     
     
   })
